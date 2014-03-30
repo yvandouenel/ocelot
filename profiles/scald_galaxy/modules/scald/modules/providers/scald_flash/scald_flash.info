@@ -1,0 +1,15 @@
+name = Scald Flash
+description = Provides Flash atoms from SWF files.
+package = Scald Providers
+core = 7.x
+dependencies[] = scald
+stylesheets[all][] = scald_flash.css
+
+
+
+; Information added by drush on 2013-09-30
+version = "7.x-1.1+35-dev"
+core = "7.x"
+project = "scald"
+datestamp = "1380531544"
+

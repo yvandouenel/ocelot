@@ -1,0 +1,509 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the Scald Galaxy install profile.
+ */
+
+/**
+ * Implements hook_install().
+ *
+ * Perform actions to set up the site for this profile.
+ *
+ * @see system_install()
+ */
+function scald_galaxy_install() {
+  $admin_theme = 'seven';
+  $default_theme = 'responsive_bartik';
+  theme_enable(array($default_theme, $admin_theme));
+  variable_set('theme_default', $default_theme);
+  variable_set('admin_theme', $admin_theme);
+
+
+  // Add text formats.
+  $filtered_html_format = array(
+    'format' => 'filtered_html',
+    'name' => 'Filtered HTML',
+    'weight' => 0,
+    'filters' => array(
+      // HTML filter.
+      'filter_html' => array(
+        'weight' => 1,
+        'status' => 1,
+        'settings' => array(
+          'allowed_html' => '<a> <em> <strong> <cite> <blockquote> <code> <div> <ul> <ol> <li> <dl> <dt> <dd> <br> <p> <img> <pre><h2><h3><h4><h5><h6>',
+        ),
+      ),
+      // Caption filter.
+      'caption' => array(
+        'weight' => 5,
+        'status' => 1,
+      ),
+      // HTML corrector filter.
+      'filter_htmlcorrector' => array(
+        'weight' => 10,
+        'status' => 1,
+      ),
+    ),
+  );
+  $filtered_html_format = (object) $filtered_html_format;
+  filter_format_save($filtered_html_format);
+
+  $full_html_format = array(
+    'format' => 'full_html',
+    'name' => 'Full HTML',
+    'weight' => 1,
+    'filters' => array(
+      // Caption filter.
+      'caption' => array(
+        'weight' => 5,
+        'status' => 1,
+      ),
+      // HTML corrector filter.
+      'filter_htmlcorrector' => array(
+        'weight' => 10,
+        'status' => 1,
+      ),
+    ),
+  );
+  $full_html_format = (object) $full_html_format;
+  filter_format_save($full_html_format);
+
+  // Enable some standard blocks.
+  $blocks = array(
+    array(
+      'module' => 'system',
+      'delta' => 'main',
+      'theme' => $default_theme,
+      'status' => 1,
+      'weight' => 0,
+      'region' => 'content',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'search',
+      'delta' => 'form',
+      'theme' => $default_theme,
+      'status' => 1,
+      'weight' => -1,
+      'region' => 'sidebar_first',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'user',
+      'delta' => 'login',
+      'theme' => $default_theme,
+      'status' => 1,
+      'weight' => 0,
+      'region' => 'sidebar_first',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'system',
+      'delta' => 'navigation',
+      'theme' => $default_theme,
+      'status' => 1,
+      'weight' => 0,
+      'region' => 'sidebar_first',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'system',
+      'delta' => 'powered-by',
+      'theme' => $default_theme,
+      'status' => 1,
+      'weight' => 10,
+      'region' => 'footer',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'system',
+      'delta' => 'help',
+      'theme' => $default_theme,
+      'status' => 1,
+      'weight' => 0,
+      'region' => 'help',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'system',
+      'delta' => 'main',
+      'theme' => $admin_theme,
+      'status' => 1,
+      'weight' => 0,
+      'region' => 'content',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'system',
+      'delta' => 'help',
+      'theme' => $admin_theme,
+      'status' => 1,
+      'weight' => 0,
+      'region' => 'help',
+      'pages' => '',
+      'cache' => -1,
+    ),
+    array(
+      'module' => 'user',
+      'delta' => 'login',
+      'theme' => $admin_theme,
+      'status' => 1,
+      'weight' => 10,
+      'region' => 'content',
+      'pages' => '',
+      'cache' => -1,
+    ),
+  );
+  $query = db_insert('block')->fields(array('module', 'delta', 'theme', 'status', 'weight', 'region', 'pages', 'cache'));
+  foreach ($blocks as $block) {
+    $query->values($block);
+  }
+  $query->execute();
+
+  // Insert default pre-defined node types into the database. For a complete
+  // list of available node type attributes, refer to the node type API
+  // documentation at: http://api.drupal.org/api/HEAD/function/hook_node_info.
+  $types = array(
+    array(
+      'type' => 'article',
+      'name' => st('Article'),
+      'base' => 'node_content',
+      'description' => st('Use <em>articles</em> for time-sensitive content like news, press releases or blog posts.'),
+      'custom' => 1,
+      'modified' => 1,
+      'locked' => 0,
+    ),
+  );
+
+  foreach ($types as $type) {
+    $type = node_type_set_defaults($type);
+    node_type_save($type);
+    node_add_body_field($type);
+  }
+
+  // Insert default pre-defined RDF mapping into the database.
+  $rdf_mappings = array(
+    array(
+      'type' => 'node',
+      'bundle' => 'article',
+      'mapping' => array(
+        'field_image' => array(
+          'predicates' => array('og:image', 'rdfs:seeAlso'),
+          'type' => 'rel',
+        ),
+        'field_tags' => array(
+          'predicates' => array('dc:subject'),
+          'type' => 'rel',
+        ),
+      ),
+    ),
+  );
+  foreach ($rdf_mappings as $rdf_mapping) {
+    rdf_mapping_save($rdf_mapping);
+  }
+
+  // Enable user picture support and set the default to a square thumbnail option.
+  variable_set('user_pictures', '1');
+  variable_set('user_picture_dimensions', '1024x1024');
+  variable_set('user_picture_file_size', '800');
+  variable_set('user_picture_style', 'thumbnail');
+
+  // Allow visitor account creation with administrative approval.
+  variable_set('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL);
+
+  // Create a default vocabulary named "Tags", enabled for the 'article' content type.
+  $description = st('Use tags to group articles on similar topics into categories.');
+  $help = st('Enter a comma-separated list of words to describe your content.');
+  $vocabulary = (object) array(
+    'name' => st('Tags'),
+    'description' => $description,
+    'machine_name' => 'tags',
+    'help' => $help,
+
+  );
+  taxonomy_vocabulary_save($vocabulary);
+
+  $field = array(
+    'field_name' => 'field_' . $vocabulary->machine_name,
+    'type' => 'taxonomy_term_reference',
+    // Set cardinality to unlimited for tagging.
+    'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+    'settings' => array(
+      'allowed_values' => array(
+        array(
+          'vocabulary' => $vocabulary->machine_name,
+          'parent' => 0,
+        ),
+      ),
+    ),
+  );
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'field_' . $vocabulary->machine_name,
+    'entity_type' => 'node',
+    'label' => 'Tags',
+    'bundle' => 'article',
+    'description' => $vocabulary->help,
+    'widget' => array(
+      'type' => 'taxonomy_autocomplete',
+      'weight' => -4,
+    ),
+    'display' => array(
+      'default' => array(
+        'type' => 'taxonomy_term_reference_link',
+        'weight' => 10,
+      ),
+      'teaser' => array(
+        'type' => 'taxonomy_term_reference_link',
+        'weight' => 10,
+      ),
+    ),
+  );
+  field_create_instance($instance);
+
+
+  // Create an atom reference field named "Image", enabled for the 'article' content type.
+  $field = array(
+    'field_name' => 'field_image',
+    'type' => 'atom_reference',
+    'cardinality' => 1,
+    'locked' => FALSE,
+  );
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'field_image',
+    'entity_type' => 'node',
+    'label' => 'Image',
+    'bundle' => 'article',
+    'description' => st('Use an image to go with this article.'),
+    'required' => FALSE,
+
+    'settings' => array(
+      'referencable_types' => array('image' => 'image'),
+    ),
+
+    'widget' => array(
+      'type' => 'atom_reference_textfield',
+    ),
+
+    'display' => array(
+      'default' => array(
+        'label' => 'hidden',
+        'type' => 'sdl_editor_representation',
+        'weight' => -1,
+      ),
+      'teaser' => array(
+        'label' => 'hidden',
+        'type' => 'hidden',
+        'weight' => -1,
+      ),
+    ),
+  );
+  field_create_instance($instance);
+
+  // Create an atom reference field named "Media", enabled for the 'article' content type.
+  $field = array(
+    'field_name' => 'field_media',
+    'type' => 'atom_reference',
+    'cardinality' => -1,
+    'locked' => FALSE,
+  );
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'field_media',
+    'entity_type' => 'node',
+    'label' => 'Media',
+    'bundle' => 'article',
+    'description' => st('More media assets for this article.'),
+    'required' => FALSE,
+
+    'widget' => array(
+      'type' => 'atom_reference_textfield',
+    ),
+
+    'display' => array(
+      'default' => array(
+        'label' => 'hidden',
+        'type' => 'sdl_editor_representation',
+        'weight' => -1,
+      ),
+      'teaser' => array(
+        'label' => 'hidden',
+        'type' => 'hidden',
+        'weight' => -1,
+      ),
+    ),
+  );
+  field_create_instance($instance);
+
+  // Gallery configuration.
+  $player = array(
+    '*' => 'galleria',
+    'settings' => array(
+      'width' => '690',
+      'height' => '450',
+      'thumb_style' => 'thumbnail',
+      'normal_style' => 'large',
+      'big_style' => 'original',
+      'theme' => 'classic',
+    ),
+  );
+  $context_config = scald_context_config_load('sdl_editor_representation');
+  $context_config->player['gallery'] = $player;
+  scald_context_config_save($context_config);
+  $context_config = scald_context_config_load('full');
+  $context_config->player['gallery'] = $player;
+  scald_context_config_save($context_config);
+
+  // Create two contexts, preconfigure for images.
+  $context = array(
+    'name' => 'small',
+    'title' => 'Small',
+    'description' => '',
+    'render_language' => 'XHTML',
+    'parseable' => TRUE,
+    'formats' => array(),
+  );
+  scald_context_save($context);
+  $context['name'] = 'medium';
+  $context['title'] = 'Medium';
+  scald_context_save($context);
+
+  $context_config = scald_context_config_load('small');
+  $context_config->transcoder['image']['*'] = 'style-thumbnail';
+  scald_context_config_save($context_config);
+  $context_config = scald_context_config_load('medium');
+  $context_config->transcoder['image']['*'] = 'style-medium';
+  scald_context_config_save($context_config);
+
+  // Configure the sdl_editor_representation context to use large image.
+  $context_config = scald_context_config_load('sdl_editor_representation');
+  $context_config->transcoder['image']['*'] = 'style-large';
+  scald_context_config_save($context_config);
+
+  $defaults = scald_atom_defaults('image');
+  $defaults->upload_type = 'plupload';
+  $scald_atom_defaults = variable_get('scald_atom_defaults', array());
+  $scald_atom_defaults['image'] = $defaults;
+  variable_set('scald_atom_defaults', $scald_atom_defaults);
+
+  cache_clear_all('*', 'cache_scald', TRUE);
+
+  // Read back the created field instance for the Body field,
+  // and tweak it to enable Scald Drag'n'Drop feature on it.
+  $instance = field_info_instance('node', 'body', 'article');
+  $instance['settings']['dnd_enabled'] = 1;
+  field_update_instance($instance);
+
+  // Set the default modal size a little bigger than the default 500x300.
+  variable_set('dnd_modal_width', '600');
+  variable_set('dnd_modal_height', '400');
+
+  // Enable the DnD plugin in the default CKEditor profiles.
+  $ck_profiles = ckeditor_profile_load();
+  foreach ($ck_profiles as $name => $ck_profile) {
+    if (!isset($ck_profile->settings['toolbar'])) {
+      continue;
+    }
+
+    $ck_profile->settings['loadPlugins']['dnd'] = array(
+      'name' => 'dnd',
+      'desc' => 'Scald Drag and Drop integration',
+      'path' => '%base_path%profiles/scald_galaxy/modules/scald/modules/library/dnd/plugins/ckeditor/',
+    );
+
+    $ck_profile->settings['toolbar'] = "
+    [
+        ['Source'],
+        ['Bold','Italic','Underline','Strike','-','NumberedList','BulletedList','-','Link','Unlink'],
+        ['ScaldAtom']
+    ]";
+
+    // Disable ACF in CKEditor 4.1+.
+    $ck_profile->settings['js_conf'] = 'config.allowedContent = true;';
+
+    db_update('ckeditor_settings')
+      ->fields(array('settings' => serialize($ck_profile->settings)))
+      ->condition('name', $name)
+      ->execute();
+  }
+
+  // Enable default permissions for system roles.
+  $filtered_html_permission = filter_permission_name($filtered_html_format);
+  user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array('access content', 'access comments', 'fetch any atom', 'view any atom', $filtered_html_permission));
+  user_role_grant_permissions(DRUPAL_AUTHENTICATED_RID, array('access content', 'access comments', 'fetch any atom', 'view any atom', 'post comments', 'skip comment approval', $filtered_html_permission));
+
+  // Create a default role for site administrators, with all available permissions assigned.
+  $admin_role = new stdClass();
+  $admin_role->name = 'administrator';
+  $admin_role->weight = 2;
+  user_role_save($admin_role);
+  user_role_grant_permissions($admin_role->rid, array_keys(module_invoke_all('permission')));
+  // Set this as the administrator role.
+  variable_set('user_admin_role', $admin_role->rid);
+
+  // Assign user 1 the "administrator" role.
+  db_insert('users_roles')
+    ->fields(array('uid' => 1, 'rid' => $admin_role->rid))
+    ->execute();
+
+  // Create a Home link in the main menu.
+  $item = array(
+    'link_title' => st('Home'),
+    'link_path' => '<front>',
+    'menu_name' => 'main-menu',
+  );
+  menu_link_save($item);
+
+  // Update the menu router information.
+  menu_rebuild();
+
+  // Create an "About Us" article.
+  $t = get_t();
+
+  $node = new stdClass();
+  $node->uid = 1;
+  $node->language = 'und';
+  $node->type = 'article';
+  $node->status = 1;
+  $node->promote = 1;
+  $node->title = $t('About Us');
+  $node->body['und'][0]['value'] = $t('
+  <h2>Instruction</h2>
+  <p>To embed an atom into your article, drag and drop it (the thumbnail) from the library into the textarea or the Atom Reference field. If you don\'t know how to use Scald, read <a href="https://drupal.org/node/1775718#more">this section</a> for screencasts and slides.</p>
+  <p>Visit <a href="https://drupal.org/project/scald">Scald project</a> to read more, or <a href="https://drupal.org/project/scald_galaxy">Scald Galaxy distribution</a> to start another test.</p>
+  ');
+  $node->body['und'][0]['format'] = 'filtered_html';
+  $node->menu = array (
+    'enabled' => 1,
+    'mlid' => 0,
+    'module' => 'menu',
+    'hidden' => 0,
+    'has_children' => 0,
+    'customized' => 0,
+    'options' => 
+    array (
+    ),
+    'expanded' => 0,
+    'parent_depth_limit' => 8,
+    'link_title' => $t('About Us'),
+    'description' => '',
+    'parent' => 'main-menu:0',
+    'weight' => '1',
+    'plid' => '0',
+    'menu_name' => 'main-menu',
+  );
+
+  node_save($node);
+}
+
